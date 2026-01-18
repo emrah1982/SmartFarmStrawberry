@@ -43,6 +43,8 @@ python tests/smoke_test.py
 
 Aşağıdaki adımlarla Google Colab üzerinde hızlıca eğitim ve inference çalıştırabilirsiniz.
 
+#### Yöntem 1: Notebook ile Manuel Çalıştırma
+
 - **1) Colab'i aç ve GPU seç**
   - Runtime > Change runtime type > Hardware accelerator: GPU
 
@@ -63,7 +65,30 @@ Aşağıdaki adımlarla Google Colab üzerinde hızlıca eğitim ve inference ç
   drive.mount('/content/drive')
   ```
 
-- **5) Production notebook'u aç**
+- **5) Roboflow API Key'i güvenli şekilde ayarla (ÖNEMLİ)**
+  
+  **Önerilen: Colab Secrets kullanın**
+  ```python
+  from google.colab import userdata
+  import os
+  
+  # Sol panelde 🔑 (Secrets) ikonuna tıklayın
+  # Name: ROBOFLOW_API_KEY, Value: rf_... (API key'iniz)
+  os.environ['ROBOFLOW_API_KEY'] = userdata.get('ROBOFLOW_API_KEY')
+  ```
+  
+  **Alternatif: Manuel giriş (geçici)**
+  ```python
+  from getpass import getpass
+  import os
+  
+  API_KEY = getpass("Roboflow API Key: ")  # Girdiğiniz görünmez
+  os.environ['ROBOFLOW_API_KEY'] = API_KEY
+  ```
+  
+  🔑 API Key alma: https://app.roboflow.com/settings/api
+
+- **6) Production notebook'u aç**
   - Dosya: `StrawberryVision_Colab_Production.ipynb`
   - İçerikte şunlar hazırdır:
     - Roboflow API ile dataset indirme (4 doğrulanmış dataset seçeneği)
@@ -71,15 +96,44 @@ Aşağıdaki adımlarla Google Colab üzerinde hızlıca eğitim ve inference ç
     - Eğitim konfigürasyonu (`configs/train_config.yaml`) ve augmentasyon ayarları
     - Her 10 epoch'ta checkpoint kaydetme (Google Drive)
 
-- **6) Roboflow API anahtarını gir ve veri setini seç**
-  ```python
-  API_KEY = "YOUR_API_KEY_HERE"      # Roboflow > Settings > API
-  SELECTED_DATASET = 1                # 1-4 arası seçenek (önerilen: 1)
-  ```
-
 - **7) Tüm hücreleri sırayla çalıştır**
   - Eğitim sonunda en iyi model ve tüm checkpoint'ler Drive'a kopyalanır.
   - Sonuç görselleri ve metrikler `runs/train/...` altında da kaydedilir.
+
+#### Yöntem 2: Headless Çalıştırma (nbconvert)
+
+Notebook'u dosya menüsünü açmadan komut satırından çalıştırabilirsiniz:
+
+```python
+# 1) Kurulum
+!git clone https://github.com/emrah1982/SmartFarmStrawberry.git
+%cd SmartFarmStrawberry
+!pip install -q -r requirements.txt nbconvert jupyter roboflow
+
+# 2) API Key'i ayarla (Colab Secrets'tan)
+from google.colab import userdata, drive
+import os
+
+os.environ['ROBOFLOW_API_KEY'] = userdata.get('ROBOFLOW_API_KEY')
+drive.mount('/content/drive')
+
+# 3) Notebook'u çalıştır
+!jupyter nbconvert --to notebook --execute StrawberryVision_Colab_Production.ipynb \
+  --output executed.ipynb --ExecutePreprocessor.timeout=-1
+```
+
+#### Dataset Versiyonları
+
+Roboflow datasetlerinin çoğu **version 2** veya üstünü kullanır. Eğer version hatası alırsanız:
+
+```python
+# Hücre 0'da VERSION parametresini değiştirin
+VERSION = 2  # veya 3, 4, vb.
+```
+
+Mevcut versiyonları kontrol etmek için: `https://universe.roboflow.com/{workspace}/{project}`
+
+**⚠️ Güvenlik Notu**: API key'inizi asla kod hücresine yazmayın. Colab Secrets veya `getpass()` kullanın.
 
 Not: Colab dışında lokalde çalıştırmak için de aynı dizin yapısı ve `scripts/` altındaki yardımcı komutlar kullanılabilir.
 
