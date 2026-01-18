@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+*.tmp
+*.cache/
+.venv/
+venv/
+env/
+
+# Jupyter / Colab
+.ipynb_checkpoints/
+*.nbconvert.ipynb
+executed.ipynb
+
+# OS/IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Secrets/Env
+.env
+.env.*
+*.secret
+
+# ML Artifacts
+runs/
+outputs/
+checkpoints/
+*.pt
+*.pth
+*.onnx
+*.engine
+*.ckpt
+
+# Datasets (indirilebilir/yeniden üretilebilir)
+datasets/
+!datasets/README.md
+
+# Roboflow indirilenler
+roboflow/
+
+# Cache/Tests
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node (olası örnekler)
+node_modules/
