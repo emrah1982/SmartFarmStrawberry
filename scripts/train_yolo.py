@@ -11,7 +11,7 @@ import logging
 import os
 import yaml
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -153,9 +153,47 @@ def validate_data_yaml(data_yaml: str) -> bool:
         return False
 
 
+def resolve_default_data_yaml() -> Optional[str]:
+    """Google Drive'a yüklenen dataset'i otomatik bulur.
+    Kontrol sırası:
+    1) Env: DRIVE_DATA_YAML
+    2) configs/drive_dir.txt + dataset/data.yaml
+    3) Colab varsayılan: /content/drive/MyDrive/StrawberryVision/dataset/data.yaml
+    4) Lokal fallback: datasets/roboflow/data.yaml
+    """
+    # 1) Explicit env
+    env_path = os.environ.get("DRIVE_DATA_YAML", "").strip()
+    if env_path and os.path.exists(env_path):
+        return env_path
+
+    # 2) configs/drive_dir.txt
+    try:
+        drive_file = Path("configs") / "drive_dir.txt"
+        if drive_file.exists():
+            drive_dir = drive_file.read_text(encoding="utf-8").strip()
+            if drive_dir:
+                candidate = Path(os.path.expandvars(os.path.expanduser(drive_dir))) / "dataset" / "data.yaml"
+                if candidate.exists():
+                    return str(candidate)
+    except Exception:
+        pass
+
+    # 3) Colab default
+    colab_candidate = Path("/content/drive/MyDrive/StrawberryVision/dataset/data.yaml")
+    if colab_candidate.exists():
+        return str(colab_candidate)
+
+    # 4) Lokal fallback
+    local_candidate = Path("datasets/roboflow/data.yaml")
+    if local_candidate.exists():
+        return str(local_candidate)
+
+    return None
+
+
 def main():
     parser = argparse.ArgumentParser(description="YOLOv8 model eğitimi")
-    parser.add_argument("--data", type=str, required=True, help="Dataset YAML dosyası")
+    parser.add_argument("--data", type=str, required=False, help="Dataset YAML dosyası")
     parser.add_argument("--config", type=str, default=None, help="Eğitim config YAML dosyası")
     
     parser.add_argument("--model", type=str, default=None, help="Model adı (yolov8n.pt, yolov8s.pt, ...)")
@@ -167,7 +205,23 @@ def main():
     
     args = parser.parse_args()
     
-    if not validate_data_yaml(args.data):
+    data_yaml_path = args.data
+    if not data_yaml_path:
+        logger.info("--data verilmedi. Google Drive ve yerel konumlardan data.yaml otomatik aranıyor...")
+        data_yaml_path = resolve_default_data_yaml()
+        if data_yaml_path:
+            logger.info(f"Bulunan dataset: {data_yaml_path}")
+        else:
+            logger.error(
+                "Dataset bulunamadı. Aşağıdakilerden birini yapın:\n"
+                " - --data ile data.yaml yolunu verin\n"
+                " - configs/drive_dir.txt içinde Drive klasörünü (StrawberryVision) tanımlayın ve dataset/data.yaml mevcut olsun\n"
+                " - Colab'ta /content/drive/MyDrive/StrawberryVision/dataset/data.yaml yolunu kullanın\n"
+                " - veya datasets/roboflow/data.yaml oluşturun"
+            )
+            return 1
+
+    if not validate_data_yaml(data_yaml_path):
         return 1
     
     if args.config:
@@ -190,7 +244,7 @@ def main():
     if args.name:
         config['name'] = args.name
     
-    success = train_yolo(args.data, config)
+    success = train_yolo(data_yaml_path, config)
     
     if success:
         logger.info("✅ Eğitim başarıyla tamamlandı!")
